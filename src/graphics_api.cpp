@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
 				} else if (req.method == "POST"_method) {
 					nlohmann::json value = nlohmann::json::parse(req.body);
 
-					billiards::gphx::RenderParams params;
+					billiards::graphics::RenderParams params;
 					if (value.contains("params") && value["params"].is_object()) {
 						params.parse(value["params"]);
 					}
@@ -41,9 +41,9 @@ int main(int argc, char **argv) {
 						"Rendered graphics", true, "graphics",
 						[&params, &table](billiards::json::SaxWriter& writer) {
 							writer.begin_array();
-							billiards::gphx::render_table(
+							billiards::graphics::render_table(
 								params, table,
-								[&writer](std::shared_ptr<const billiards::gphx::GraphicsPrimitive> ptr) {
+								[&writer](std::shared_ptr<const billiards::graphics::GraphicsPrimitive> ptr) {
 									ptr->to_json(writer);
 								});
 							writer.end_array();

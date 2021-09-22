@@ -24,3 +24,5 @@ target_link_libraries(
 
 	    Threads::Threads
 )
+
+install(TARGETS graphics_api DESTINATION /app)

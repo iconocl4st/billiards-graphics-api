@@ -9,7 +9,7 @@
 #include "./RenderParams.h"
 #include "common/graphics/GraphicsPrimitive.h"
 
-namespace billiards::gphx {
+namespace billiards::graphics {
 	void render_table(
 		const RenderParams& params,
 		const config::Table& table,

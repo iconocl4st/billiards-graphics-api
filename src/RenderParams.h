@@ -7,7 +7,7 @@
 
 #include "common/utils/Serializable.h"
 
-namespace billiards::gphx {
+namespace billiards::graphics {
 	class RenderParams : public json::Serializable {
 	public:
 
