@@ -19,6 +19,8 @@
 int main(int argc, char **argv) {
 	crow::SimpleApp app;
 
+	DO_STATUS_ENDPOINT();
+
 	CROW_ROUTE(app, "/table/")
 		.methods("POST"_method, "OPTIONS"_method)
 			([](const crow::request& req) {
