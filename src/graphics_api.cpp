@@ -3,10 +3,7 @@
 //
 
 #include <iostream>
-#include <sstream>
-#include <fstream>
 #include <pthread.h>
-#include <random>
 
 
 #include "common/3rd_party/crow_all.h"
@@ -45,6 +42,54 @@ int main(int argc, char **argv) {
 							writer.begin_array();
 							billiards::graphics::render_table(
 								params, table,
+								[&writer](std::shared_ptr<const billiards::graphics::GraphicsPrimitive> ptr) {
+									ptr->to_json(writer);
+								});
+							writer.end_array();
+						}};
+
+					crow::response resp{billiards::json::dump(def_resp)};
+					resp.add_header("Access-Control-Allow-Origin", "*");
+					return resp;
+				} else {
+					return crow::response(404);
+				}
+			});
+
+	CROW_ROUTE(app, "/shot/")
+		.methods("POST"_method, "OPTIONS"_method)
+			([](const crow::request& req) {
+				if (req.method == "OPTIONS"_method) {
+					HANDLE_OPTIONS;
+				} else if (req.method == "POST"_method) {
+					nlohmann::json value = nlohmann::json::parse(req.body);
+
+					billiards::graphics::RenderParams params;
+					if (value.contains("params") && value["params"].is_object()) {
+						params.parse(value["params"]);
+					}
+
+					billiards::config::Table table;
+					if (value.contains("table") && value["table"].is_object()) {
+						table.parse(value["table"]);
+					}
+
+					billiards::layout::Locations locations;
+					if (value.contains("locations") && value["locations"].is_object()) {
+						locations.parse(value["locations"]);
+					}
+
+					billiards::shots::ShotInformation shot_info;
+					if (value.contains("shot-info") && value["shot-info"].is_object()) {
+						shot_info.parse(value["shot-info"]);
+					}
+
+					billiards::utils::DefaultResponse def_resp{
+						"Rendered graphics", true, "graphics",
+						[&params, &table, &locations, &shot_info](billiards::json::SaxWriter& writer) {
+							writer.begin_array();
+							billiards::graphics::render_shot(
+								params, table, locations, shot_info,
 								[&writer](std::shared_ptr<const billiards::graphics::GraphicsPrimitive> ptr) {
 									ptr->to_json(writer);
 								});
