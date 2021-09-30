@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 project(graphics_api)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_VERBOSE_MAKEFILE on)
+#set(CMAKE_VERBOSE_MAKEFILE on)
 
 find_package(Threads REQUIRED)
 find_package(Boost COMPONENTS system REQUIRED)
