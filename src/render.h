@@ -16,7 +16,7 @@
 #include "common/graphics/Text.h"
 #include "common/graphics/Image.h"
 
-#include "./RenderParams.h"
+#include "./RenderShotParams.h"
 
 namespace billiards::graphics {
 
@@ -27,17 +27,6 @@ namespace billiards::graphics {
 		constexpr int GHOST_BALL = 11;
 		constexpr int GOAL_POST = 20;
 		constexpr int BALL = 30;
-	}
-
-	void render_table(
-		const RenderParams& params,
-		const config::Table& table,
-		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
-	) {
-
-		for (const auto& pocket : table.pockets) {
-
-		}
 	}
 
 	inline
@@ -132,10 +121,10 @@ namespace billiards::graphics {
 		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
 	) {
 		auto primitive = std::make_shared<graphics::Polygon>();
-		primitive->vertices.emplace_back(pocket.innerSegment1);
-		primitive->vertices.emplace_back(pocket.outerSegment1);
-		primitive->vertices.emplace_back(pocket.outerSegment2);
-		primitive->vertices.emplace_back(pocket.innerSegment2().point());
+		primitive->vertices.emplace_back(pocket.inner_segment_1);
+		primitive->vertices.emplace_back(pocket.outer_segment_1);
+		primitive->vertices.emplace_back(pocket.outer_segment_2);
+		primitive->vertices.emplace_back(pocket.inner_segment_2().point());
 		primitive->fill = true;
 		primitive->color = graphics::Color{255, 0, 0, 255};
 		primitive->priority = priority::POCKET;
@@ -213,31 +202,27 @@ namespace billiards::graphics {
 	}
 
 	void render_shot(
-		const RenderParams& params,
-		const config::Table& table,
-		const layout::Locations& locations,
-		const shots::ShotInformation& shot_info,
+		const RenderShotParams& params,
 		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
 	) {
-		render_table_edge(table, receiver);
+		render_table_edge(params.table, receiver);
 
-		for (const auto& pocket : table.pockets) {
+		for (const auto& pocket : params.table.pockets) {
 			render_pocket(pocket, receiver);
 		}
 
-		render_shot_edge(shot_info, true, receiver);
-		render_shot_edge(shot_info, false, receiver);
+		render_shot_edge(params.shot_info, true, receiver);
+		render_shot_edge(params.shot_info, false, receiver);
 
-		for (const auto& destination : shot_info.destinations) {
+		for (const auto& destination : params.shot_info.destinations) {
 			render_destination(
-				table, locations, shot_info,
-
-				destination, shot_info.get_shot_type(destination), receiver);
+				params.table, params.locations, params.shot_info,
+				destination, params.shot_info.get_shot_type(destination), receiver);
 		}
 
 		int index = 0;
-		for (const auto& located_ball : locations.balls) {
-			const auto* ball_type = shots::get_ball_type(table, locations, index);
+		for (const auto& located_ball : params.locations.balls) {
+			const auto* ball_type = shots::get_ball_type(params.table, params.locations, index);
 			render_ball(located_ball, *ball_type, receiver);
 			index++;
 		}
