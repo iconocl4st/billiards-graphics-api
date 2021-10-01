@@ -49,6 +49,8 @@ int main(int argc, char **argv) {
 						}};
 
 					crow::response resp{billiards::json::dump(def_resp)};
+					resp.set_header("Content-Type", "application/json");
+					resp.set_header("Mime-type", "application/json");
 					resp.add_header("Access-Control-Allow-Origin", "*");
 					return resp;
 				} else {
@@ -98,6 +100,8 @@ int main(int argc, char **argv) {
 							}};
 
 						crow::response resp{billiards::json::dump(def_resp)};
+						resp.set_header("Content-Type", "application/json");
+						resp.set_header("Mime-type", "application/json");
 						resp.add_header("Access-Control-Allow-Origin", "*");
 						return resp;
 					} catch (std::exception& e) {

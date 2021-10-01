@@ -73,6 +73,7 @@ namespace billiards::graphics {
 	void render_destination(
 		const config::Table& table,
 		const layout::Locations& locations,
+		const shots::ShotInformation& info,
 		const shots::Destination& destination,
 		const shots::step_type::ShotStepType shot_type,
 		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
@@ -89,12 +90,40 @@ namespace billiards::graphics {
 						const auto* ball_type = shots::get_ball_type(table, locations, locations.cue_ball_index());
 						render_ghost_ball(goal_posts->goal_post_center.point(), *ball_type, receiver);
 					}
+					default:
+						break;
 				}
 				break;
 			}
 			case shots::target_type::UNKNOWN:
 			default:
 				return;
+		}
+
+		switch (shot_type) {
+			case shots::step_type::RAIL: {
+				const auto& rail_step = info.get_typed_step<shots::RailStep>(destination);
+				const auto& rail = table.rail(rail_step->rail);
+
+				auto primitive = std::make_shared<graphics::Lines>();
+				primitive->append(rail.segment1, rail.segment2);
+				primitive->fill = false;
+				primitive->line_width = 0.5;
+				primitive->color = graphics::Color{255, 255, 0, 255};
+				primitive->priority = priority::GHOST_BALL;
+				receiver(primitive);
+
+
+//				const auto rail_line = geometry::through(s1, s2);
+//				const auto reflection = geometry::reflect(src, rail_line);
+//				const auto travel_line = geometry::through(src, reflection);
+//				const auto bank_line = geometry::parallel_at(rail_line, s1 + in * radius);
+//				const auto intersection = geometry::intersection(bank_line, travel_line);
+//				return intersection;
+				break;
+			}
+			default:
+				break;
 		}
 	}
 
@@ -200,7 +229,10 @@ namespace billiards::graphics {
 		render_shot_edge(shot_info, false, receiver);
 
 		for (const auto& destination : shot_info.destinations) {
-			render_destination(table, locations, destination, shot_info.get_shot_type(destination), receiver);
+			render_destination(
+				table, locations, shot_info,
+
+				destination, shot_info.get_shot_type(destination), receiver);
 		}
 
 		int index = 0;
