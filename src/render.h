@@ -5,18 +5,18 @@
 #ifndef IDEA_RENDER_H
 #define IDEA_RENDER_H
 
-#include "common/config/Table.h"
-#include "common/shots/Locations.h"
-#include "common/shots/ShotInformation.h"
-#include "common/shots/shot_helpers.h"
+#include "billiards_common/config/Table.h"
+#include "billiards_common/shots/Locations.h"
+#include "billiards_common/shots/ShotInformation.h"
+#include "billiards_common/shots/shot_helpers.h"
 
-#include "common/graphics/Lines.h"
-#include "common/graphics/Polygon.h"
-#include "common/graphics/Circle.h"
-#include "common/graphics/Text.h"
-#include "common/graphics/Image.h"
+#include "billiards_common/graphics/Lines.h"
+#include "billiards_common/graphics/Polygon.h"
+#include "billiards_common/graphics/Circle.h"
+#include "billiards_common/graphics/Text.h"
+#include "billiards_common/graphics/Image.h"
 
-#include "./RenderShotParams.h"
+#include "RenderShotParams.h"
 
 namespace billiards::graphics {
 

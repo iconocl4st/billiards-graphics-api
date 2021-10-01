@@ -5,7 +5,7 @@
 #ifndef IDEA_RENDERSHOTPARAMS_H
 #define IDEA_RENDERSHOTPARAMS_H
 
-#include "common/shots/ShotInformation.h"
+#include "billiards_common/shots/ShotInformation.h"
 
 namespace billiards::graphics {
 	class RenderShotParams : public json::Serializable {
@@ -15,7 +15,7 @@ namespace billiards::graphics {
 		billiards::shots::ShotInformation shot_info;
 
 		RenderShotParams() = default;
-		~RenderShotParams() = default;
+		~RenderShotParams() override = default;
 
 		void to_json(json::SaxWriter& writer) const override {
 			writer.begin_object();
