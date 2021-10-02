@@ -17,6 +17,7 @@ target_include_directories(
 	graphics_api
 	
 	PUBLIC
+	${PROJECT_SOURCE_DIR}/src
 	$ENV{REPOS}/billiards-common/src
 )
 
