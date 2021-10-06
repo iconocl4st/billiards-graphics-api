@@ -63,7 +63,7 @@ namespace billiards::graphics {
 		const config::Table& table,
 		const layout::Locations& locations,
 		const shots::ShotInformation& info,
-		const shots::Destination& destination,
+		const shots::StepInfo& destination,
 		const shots::step_type::ShotStepType shot_type,
 		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
 	) {
