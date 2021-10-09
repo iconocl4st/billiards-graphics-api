@@ -22,6 +22,7 @@ namespace billiards::graphics {
 
 	namespace priority {
 		constexpr int TABLE_EDGE = -10;
+		constexpr int GLANCE_CALC = -5;
 		constexpr int POCKET = 0;
 		constexpr int SHOT_EDGE = 10;
 		constexpr int GHOST_BALL = 11;
@@ -59,6 +60,32 @@ namespace billiards::graphics {
 	}
 
 	inline
+	void render_destination_target(
+		const config::Table& table,
+		const layout::Locations& locations,
+		const shots::ShotInformation& info,
+		const shots::StepInfo& destination,
+		const shots::step_type::ShotStepType shot_type,
+		const std::shared_ptr<shots::GoalPostTarget>& target,
+		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
+	) {
+		render_goalpost(target->posts[0].get(), receiver);
+		render_goalpost(target->posts[2].get(), receiver);
+
+		switch (shot_type) {
+			case shots::step_type::RAIL:
+			case shots::step_type::STRIKE:
+			case shots::step_type::KISS:
+			{
+				const auto* ball_type = shots::get_ball_type(table, locations, locations.cue_ball_index());
+				render_ghost_ball(destination.target->posts[1].get(), *ball_type, receiver);
+			}
+			default:
+				break;
+		}
+	}
+
+	inline
 	void render_destination(
 		const config::Table& table,
 		const layout::Locations& locations,
@@ -67,52 +94,59 @@ namespace billiards::graphics {
 		const shots::step_type::ShotStepType shot_type,
 		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
 	) {
-		switch (destination.target->type) {
-			case shots::target_type::GOAL_POST: {
-				const auto& goal_posts = std::dynamic_pointer_cast<shots::GoalPostTarget>(destination.target);
-				render_goalpost(goal_posts->goal_post_1.point(), receiver);
-				render_goalpost(goal_posts->goal_post_2.point(), receiver);
-
-				switch (shot_type) {
-					case shots::step_type::RAIL:
-					case shots::step_type::STRIKE: {
-						const auto* ball_type = shots::get_ball_type(table, locations, locations.cue_ball_index());
-						render_ghost_ball(goal_posts->goal_post_center.point(), *ball_type, receiver);
-					}
-					default:
-						break;
-				}
-				break;
-			}
-			case shots::target_type::UNKNOWN:
-			default:
-				return;
+		if (destination.target) {
+			render_destination_target(
+				table,
+				locations,
+				info,
+				destination,
+				shot_type,
+				destination.target,
+				receiver
+			);
 		}
 
-		switch (shot_type) {
-			case shots::step_type::RAIL: {
-				const auto& rail_step = info.get_typed_step<shots::RailStep>(destination);
-				const auto& rail = table.rail(rail_step->rail);
-
-				auto primitive = std::make_shared<graphics::Lines>();
-				primitive->append(rail.segment1, rail.segment2);
-				primitive->fill = false;
-				primitive->line_width = 0.5;
-				primitive->color = graphics::Color{255, 255, 0, 255};
-				primitive->priority = priority::GHOST_BALL;
-				receiver(primitive);
-
-
-//				const auto rail_line = geometry::through(s1, s2);
-//				const auto reflection = geometry::reflect(src, rail_line);
-//				const auto travel_line = geometry::through(src, reflection);
-//				const auto bank_line = geometry::parallel_at(rail_line, s1 + in * radius);
-//				const auto intersection = geometry::intersection(bank_line, travel_line);
-//				return intersection;
-				break;
+		// Render glance calculation
+		if (destination.rolling_calculation) {
+			bool has_graphics = false;
+			auto primitive = std::make_shared<graphics::Lines>();
+			const auto aim_dir = destination.rolling_calculation->aim_dir;
+			const auto aim_dir_norm = aim_dir.norm();
+			if (aim_dir_norm > TOLERANCE) {
+				primitive->append(
+					destination.rolling_calculation->loc,
+					destination.rolling_calculation->loc + aim_dir * 5 / aim_dir_norm);
+				has_graphics = true;
 			}
-			default:
-				break;
+			const auto tan_dir = destination.rolling_calculation->tan_dir;
+			const auto tan_dir_norm = tan_dir.norm();
+			if (tan_dir_norm > TOLERANCE) {
+				primitive->append(
+					destination.rolling_calculation->loc,
+					destination.rolling_calculation->loc + tan_dir * 5 / tan_dir_norm);
+				has_graphics = true;
+			}
+			primitive->fill = false;
+			primitive->line_width = 0.1;
+			primitive->color = graphics::Color{255, 0, 0, 255};
+			primitive->priority = priority::GLANCE_CALC;
+			if (has_graphics) {
+				receiver(primitive);
+			}
+		}
+
+		// Render rail
+		if (shot_type == shots::step_type::RAIL) {
+			const auto& rail_step = info.get_typed_step<shots::RailStep>(destination);
+			const auto& rail = table.rail(rail_step->rail);
+
+			auto primitive = std::make_shared<graphics::Lines>();
+			primitive->append(rail.segment1, rail.segment2);
+			primitive->fill = false;
+			primitive->line_width = 0.5;
+			primitive->color = graphics::Color{255, 255, 0, 255};
+			primitive->priority = priority::GHOST_BALL;
+			receiver(primitive);
 		}
 	}
 
@@ -166,7 +200,7 @@ namespace billiards::graphics {
 
 	void render_shot_edge(
 		const shots::ShotInformation& shot_info,
-		bool first_post,
+		int post_index,
 		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
 	) {
 		auto primitive = std::make_shared<graphics::Lines>();
@@ -175,25 +209,14 @@ namespace billiards::graphics {
 		primitive->color = graphics::Color{0, 255, 255, 255};
 		primitive->priority = priority::SHOT_EDGE;
 
-		geometry::Point previous = shot_info.cueing.cue_location.point();
-		for (const auto & destination : shot_info.destinations) {
+		geometry::Point previous = shot_info.cueing.cue_location;
+		for (const auto & destination : shot_info.infos) {
 			geometry::Point current;
-			const auto& target = destination.target;
-			switch (target->type) {
-				case shots::target_type::GOAL_POST: {
-					const auto& goal_posts = std::dynamic_pointer_cast<shots::GoalPostTarget>(target);
-					if (first_post) {
-						current = goal_posts->goal_post_1.point();
-					} else {
-						current = goal_posts->goal_post_2.point();
-					}
-					break;
-				}
-				case shots::target_type::UNKNOWN:
-				default:
-					throw std::runtime_error{"Not implemented"};
+			if (!destination.target) {
+				continue;
 			}
-
+			const auto& target = destination.target;
+			current = target->posts[post_index].point();
 			primitive->segments.emplace_back(std::pair{previous, current});
 			previous = current;
 		}
@@ -211,10 +234,10 @@ namespace billiards::graphics {
 			render_pocket(pocket, receiver);
 		}
 
-		render_shot_edge(params.shot_info, true, receiver);
-		render_shot_edge(params.shot_info, false, receiver);
+		render_shot_edge(params.shot_info, 0, receiver);
+		render_shot_edge(params.shot_info, 2, receiver);
 
-		for (const auto& destination : params.shot_info.destinations) {
+		for (const auto& destination : params.shot_info.infos) {
 			render_destination(
 				params.table, params.locations, params.shot_info,
 				destination, params.shot_info.get_shot_type(destination), receiver);
