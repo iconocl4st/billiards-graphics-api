@@ -108,31 +108,18 @@ namespace billiards::graphics {
 
 		// Render glance calculation
 		if (destination.rolling_calculation) {
-			bool has_graphics = false;
 			auto primitive = std::make_shared<graphics::Lines>();
-			const auto aim_dir = destination.rolling_calculation->aim_dir;
-			const auto aim_dir_norm = aim_dir.norm();
-			if (aim_dir_norm > TOLERANCE) {
-				primitive->append(
-					destination.rolling_calculation->loc,
-					destination.rolling_calculation->loc + aim_dir * 5 / aim_dir_norm);
-				has_graphics = true;
-			}
-			const auto tan_dir = destination.rolling_calculation->tan_dir;
-			const auto tan_dir_norm = tan_dir.norm();
-			if (tan_dir_norm > TOLERANCE) {
-				primitive->append(
-					destination.rolling_calculation->loc,
-					destination.rolling_calculation->loc + tan_dir * 5 / tan_dir_norm);
-				has_graphics = true;
-			}
+			primitive->append(
+				destination.rolling_calculation->loc,
+				destination.rolling_calculation->aim_dir);
+			primitive->append(
+				destination.rolling_calculation->loc,
+				destination.rolling_calculation->tan_dir);
 			primitive->fill = false;
 			primitive->line_width = 0.1;
 			primitive->color = graphics::Color{255, 0, 0, 255};
 			primitive->priority = priority::GLANCE_CALC;
-			if (has_graphics) {
-				receiver(primitive);
-			}
+			receiver(primitive);
 		}
 
 		// Render rail
