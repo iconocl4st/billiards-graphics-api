@@ -18,8 +18,7 @@ int main(int argc, char **argv) {
 
 	DO_STATUS_ENDPOINT();
 
-#if 0
-	CROW_ROUTE(app, "/table/")
+	CROW_ROUTE(app, "/table-boundary/")
 		.methods("POST"_method, "OPTIONS"_method)
 			([](const crow::request& req) {
 				if (req.method == "OPTIONS"_method) {
@@ -27,23 +26,25 @@ int main(int argc, char **argv) {
 				} else if (req.method == "POST"_method) {
 					nlohmann::json value = nlohmann::json::parse(req.body);
 
-					billiards::graphics::RenderShotParams params;
+					billiards::config::Table table;
 					billiards::json::ParseResult result;
-					if (HAS_OBJECT(value, "params")) {
-						params.parse(value["params"], result);
+					if (HAS_OBJECT(value, "params") && HAS_OBJECT(value["params"], "table")) {
+						table.parse(value["params"]["table"], result);
 					} else {
-						RETURN_ERROR("No params provided");
+						RETURN_ERROR("No table param provided");
 					}
-					if (result.success) {
-						RETURN_ERROR("Unable to parse params");
+					if (!result.success) {
+						std::cerr << "Invalid request:" << std::endl;
+						std::cerr << result.error_msg.str() << std::endl;
+						RETURN_ERROR("Unable to parse table");
 					}
 
 					billiards::utils::DefaultResponse def_resp{
 						"Rendered graphics", true, "graphics",
-						[&params](billiards::json::SaxWriter& writer) {
+						[&](billiards::json::SaxWriter& writer) {
 							writer.begin_array();
-							billiards::graphics::render_table(
-								params,
+							billiards::graphics::render_table_edge(
+								table,
 								[&writer](std::shared_ptr<const billiards::graphics::GraphicsPrimitive> ptr) {
 									ptr->to_json(writer);
 								});
@@ -59,7 +60,6 @@ int main(int argc, char **argv) {
 					return crow::response(404);
 				}
 			});
-#endif
 
 	CROW_ROUTE(app, "/shot-info/")
 		.methods("POST"_method, "OPTIONS"_method)
