@@ -51,11 +51,7 @@ int main(int argc, char **argv) {
 							writer.end_array();
 						}};
 
-					crow::response resp{billiards::json::dump(def_resp)};
-					resp.set_header("Content-Type", "application/json");
-					resp.set_header("Mime-type", "application/json");
-					resp.add_header("Access-Control-Allow-Origin", "*");
-					return resp;
+					RETURN_RESPONSE(def_resp);
 				} else {
 					return crow::response(404);
 				}
