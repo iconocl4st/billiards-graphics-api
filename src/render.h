@@ -16,7 +16,10 @@
 #include "billiards_common/graphics/Text.h"
 #include "billiards_common/graphics/Image.h"
 
+#include "billiards_common/config/RenderLocation.h"
+
 #include "RenderShotParams.h"
+#include "RenderLayoutParams.h"
 
 namespace billiards::graphics {
 
@@ -30,11 +33,10 @@ namespace billiards::graphics {
 		constexpr int BALL = 30;
 	}
 
+	typedef std::function<void(const std::shared_ptr<GraphicsPrimitive>&)> GraphicsReceiver;
+
 	inline
-	void render_goalpost(
-		const geometry::Point& location,
-		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
-	) {
+	void render_goalpost(const geometry::Point& location, const GraphicsReceiver& receiver) {
 		auto primitive = std::make_shared<graphics::Circle>();
 		primitive->center = location;
 		primitive->radius = 0.25;
@@ -43,10 +45,12 @@ namespace billiards::graphics {
 		primitive->priority = priority::GOAL_POST;
 		receiver(primitive);
 	}
+
+	inline
 	void render_ghost_ball(
 		const geometry::Point& location,
 		const config::BallInfo& ball_type,
-		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
+		const GraphicsReceiver& receiver
 	) {
 		auto primitive = std::make_shared<graphics::Circle>();
 		primitive->center = location;
@@ -67,7 +71,7 @@ namespace billiards::graphics {
 		const shots::StepInfo& destination,
 		const shots::step_type::ShotStepType shot_type,
 		const std::shared_ptr<shots::GoalPostTarget>& target,
-		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
+		const GraphicsReceiver& receiver
 	) {
 		render_goalpost(target->posts[0].get(), receiver);
 		render_goalpost(target->posts[2].get(), receiver);
@@ -92,7 +96,7 @@ namespace billiards::graphics {
 		const shots::ShotInformation& info,
 		const shots::StepInfo& destination,
 		const shots::step_type::ShotStepType shot_type,
-		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
+		const GraphicsReceiver& receiver
 	) {
 		if (destination.target) {
 			render_destination_target(
@@ -137,9 +141,10 @@ namespace billiards::graphics {
 		}
 	}
 
+	inline
 	void render_pocket(
 		const config::Pocket& pocket,
-		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
+		const GraphicsReceiver& receiver
 	) {
 		auto primitive = std::make_shared<graphics::Polygon>();
 		primitive->vertices.emplace_back(pocket.inner_segment_1);
@@ -153,10 +158,11 @@ namespace billiards::graphics {
 		receiver(primitive);
 	}
 
+	inline
 	void render_ball(
 		const layout::LocatedBall& located_ball,
 		const config::BallInfo& ball_type,
-		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
+		const GraphicsReceiver& receiver
 	) {
 		auto primitive = std::make_shared<graphics::Circle>();
 		primitive->center = located_ball.location;
@@ -168,27 +174,91 @@ namespace billiards::graphics {
 		receiver(primitive);
 	}
 
-	void render_table_edge(
-		const config::Table& table,
-		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
+	inline
+	void render_dimension(
+		const geometry::Dimensions& dims,
+		const GraphicsReceiver& receiver
 	) {
 		auto edges = std::make_shared<graphics::Lines>();
 		edges->line_width = 0.1;
 		edges->fill = false;
 		edges->color = graphics::Color{0, 0, 255, 255};
-		edges->append(0, 0, table.dims.width, 0);
-		edges->append(table.dims.width, 0, table.dims.width, table.dims.height);
-		edges->append(table.dims.width, table.dims.height, 0, table.dims.height);
-		edges->append(0, table.dims.height, 0, 0);
+		edges->append(0, 0, dims.width, 0);
+		edges->append(dims.width, 0, dims.width, dims.height);
+		edges->append(dims.width, dims.height, 0, dims.height);
+		edges->append(0, dims.height, 0, 0);
 		edges->priority = priority::TABLE_EDGE;
 
 		receiver(edges);
 	}
 
+
+	inline
+	void render_table_edge(const config::Table& table, const GraphicsReceiver& receiver) {
+		render_dimension(table.dims, receiver);
+	}
+
+	inline
+	void render_text(
+		const geometry::Point& location, const std::string& text,
+		const GraphicsReceiver& receiver
+	) {
+		auto g = std::make_shared<graphics::Text>();
+		g->color = graphics::Color{0, 255, 255, 255};
+		g->location = location;
+		g->text = text;
+		g->font_size = 18;
+//		std::string font_family;
+		receiver(g);
+	}
+
+	inline
+	void render_location(
+		const project::RenderLocation& location,
+		const GraphicsReceiver& receiver
+	) {
+		render_dimension(location.table_dims, receiver);
+
+//		std::cout << "Original: " << location.of << std::endl;
+//		std::cout << "Unmapped: " << location.unmap(location.of) << std::endl;
+//		std::cout << "Mapped unmapped: " << location.map(location.unmap(location.of)) << std::endl;
+
+		const auto offset = geometry::Point{0, 0};
+		const auto right = geometry::Point{location.table_dims.width, 0};
+		const auto up = geometry::Point{0, location.table_dims.height};
+		const auto alpha = 0.8;
+
+		render_text(location.table_dims.scale_to_center(offset, alpha), "Offset", receiver);
+		render_text(location.table_dims.scale_to_center(right, alpha), "Right", receiver);
+		render_text(location.table_dims.scale_to_center(up, alpha), "Up", receiver);
+	}
+
+	inline
+	void render_pocket_configs(
+			const config::Table& table,
+			const GraphicsReceiver& receiver
+	) {
+		render_dimension(table.dims, receiver);
+
+		int index = 0;
+		for (const auto& pocket : table.pockets) {
+			render_pocket(pocket, receiver);
+
+			std::stringstream ss;
+			ss << "Pocket " << index;
+			render_text(
+				table.dims.scale_to_center(pocket.center(), 0.75),
+				ss.str(),
+				receiver);
+			++index;
+		}
+	}
+
+	inline
 	void render_shot_edge(
 		const shots::ShotInformation& shot_info,
 		int post_index,
-		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
+		const GraphicsReceiver& receiver
 	) {
 		auto primitive = std::make_shared<graphics::Lines>();
 		primitive->line_width = 0.1;
@@ -211,31 +281,59 @@ namespace billiards::graphics {
 		receiver(primitive);
 	}
 
-	void render_shot(
-		const RenderShotParams& params,
-		const std::function<void(const std::shared_ptr<GraphicsPrimitive>&)>& receiver
+	void render_locations(
+		const config::Table& table,
+		const layout::Locations& locations,
+		const GraphicsReceiver& receiver
 	) {
-		render_table_edge(params.table, receiver);
-
-		for (const auto& pocket : params.table.pockets) {
-			render_pocket(pocket, receiver);
-		}
-
-		render_shot_edge(params.shot_info, 0, receiver);
-		render_shot_edge(params.shot_info, 2, receiver);
-
-		for (const auto& destination : params.shot_info.infos) {
-			render_destination(
-				params.table, params.locations, params.shot_info,
-				destination, params.shot_info.get_shot_type(destination), receiver);
-		}
-
 		int index = 0;
-		for (const auto& located_ball : params.locations.balls) {
-			const auto* ball_type = shots::get_ball_type(params.table, params.locations, index);
+		for (const auto& located_ball : locations.balls) {
+			const auto* ball_type = shots::get_ball_type(table, locations, index);
 			render_ball(located_ball, *ball_type, receiver);
 			index++;
 		}
+	}
+
+	void render_shot_info(
+			const config::Table& table,
+			const layout::Locations& locations,
+			const shots::ShotInformation& shot_info,
+			const GraphicsReceiver& receiver
+	) {
+		render_shot_edge(shot_info, 0, receiver);
+		render_shot_edge(shot_info, 2, receiver);
+
+		for (const auto& destination : shot_info.infos) {
+			render_destination(
+					table, locations, shot_info,
+					destination, shot_info.get_shot_type(destination), receiver);
+		}
+	}
+
+	void render_shot(
+		const RenderShotParams& params,
+		const GraphicsReceiver& receiver
+	) {
+		render_table_edge(params.table, receiver);
+		for (const auto& pocket : params.table.pockets) {
+			render_pocket(pocket, receiver);
+		}
+		render_shot_info(params.table, params.locations, params.shot_info, receiver);
+		render_locations(params.table, params.locations, receiver);
+	}
+
+	void render_layout(
+			const RenderLayoutParams& params,
+			const GraphicsReceiver& receiver
+	) {
+		render_table_edge(params.table, receiver);
+		for (const auto& pocket : params.table.pockets) {
+			render_pocket(pocket, receiver);
+		}
+		for (const auto& info : params.infos) {
+			render_shot_info(params.table, params.layout.locations, info, receiver);
+		}
+		render_locations(params.table, params.layout.locations, receiver);
 	}
 }
 #endif //IDEA_RENDER_H

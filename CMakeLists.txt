@@ -11,7 +11,7 @@ add_executable(
         graphics_api
 
 		${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_api.cpp
-)
+        src/RenderLayoutParams.h)
 
 target_include_directories(
 	graphics_api
