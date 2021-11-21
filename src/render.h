@@ -300,8 +300,8 @@ namespace billiards::graphics {
 			const shots::ShotInformation& shot_info,
 			const GraphicsReceiver& receiver
 	) {
-		render_shot_edge(shot_info, 0, receiver);
-		render_shot_edge(shot_info, 2, receiver);
+//		render_shot_edge(shot_info, 0, receiver);
+//		render_shot_edge(shot_info, 2, receiver);
 
 		for (const auto& destination : shot_info.infos) {
 			render_destination(
