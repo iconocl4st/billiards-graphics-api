@@ -5,9 +5,9 @@
 #ifndef IDEA_RENDER_H
 #define IDEA_RENDER_H
 
-#include "billiards_common/config/Table.h"
 #include "billiards_common/shots/Locations.h"
 #include "billiards_common/shots/ShotInformation.h"
+#include "billiards_common/shots/shot_calculation/shot.h"
 #include "billiards_common/shots/shot_helpers.h"
 
 #include "billiards_common/graphics/Lines.h"
@@ -16,7 +16,7 @@
 #include "billiards_common/graphics/Text.h"
 #include "billiards_common/graphics/Image.h"
 
-#include "billiards_common/config/RenderLocation.h"
+//#include "billiards_common/config/RenderLocation.h"
 
 #include "RenderShotParams.h"
 #include "RenderLayoutParams.h"
@@ -65,7 +65,7 @@ namespace billiards::graphics {
 
 	inline
 	void render_destination_target(
-		const config::Table& table,
+		const config::PoolConfiguration& table,
 		const layout::Locations& locations,
 		const shots::ShotInformation& info,
 		const shots::StepInfo& destination,
@@ -91,7 +91,7 @@ namespace billiards::graphics {
 
 	inline
 	void render_destination(
-		const config::Table& table,
+		const config::PoolConfiguration& table,
 		const layout::Locations& locations,
 		const shots::ShotInformation& info,
 		const shots::StepInfo& destination,
@@ -162,11 +162,16 @@ namespace billiards::graphics {
 	void render_ball(
 		const layout::LocatedBall& located_ball,
 		const config::BallInfo& ball_type,
+		const bool use_dots,
 		const GraphicsReceiver& receiver
 	) {
 		auto primitive = std::make_shared<graphics::Circle>();
 		primitive->center = located_ball.location;
-		primitive->radius = ball_type.radius;
+		if (use_dots) {
+			primitive->radius = ball_type.radius / 4;
+		} else {
+			primitive->radius = ball_type.radius;
+		}
 		primitive->fill = true;
 		primitive->color = ball_type.color;
 		primitive->priority = priority::BALL;
@@ -192,9 +197,16 @@ namespace billiards::graphics {
 		receiver(edges);
 	}
 
+	inline
+	void render_dimension(
+		const config::TableDimensions& table,
+		const GraphicsReceiver& receiver
+	) {
+		render_dimension(table.dims(), receiver);
+	}
 
 	inline
-	void render_table_edge(const config::Table& table, const GraphicsReceiver& receiver) {
+	void render_table_edge(const config::PoolConfiguration& table, const GraphicsReceiver& receiver) {
 		render_dimension(table.dims, receiver);
 	}
 
@@ -212,30 +224,31 @@ namespace billiards::graphics {
 		receiver(g);
 	}
 
-	inline
-	void render_location(
-		const project::RenderLocation& location,
-		const GraphicsReceiver& receiver
-	) {
-		render_dimension(location.table_dims, receiver);
-
-//		std::cout << "Original: " << location.of << std::endl;
-//		std::cout << "Unmapped: " << location.unmap(location.of) << std::endl;
-//		std::cout << "Mapped unmapped: " << location.map(location.unmap(location.of)) << std::endl;
-
-		const auto offset = geometry::Point{0, 0};
-		const auto right = geometry::Point{location.table_dims.width, 0};
-		const auto up = geometry::Point{0, location.table_dims.height};
-		const auto alpha = 0.8;
-
-		render_text(location.table_dims.scale_to_center(offset, alpha), "Offset", receiver);
-		render_text(location.table_dims.scale_to_center(right, alpha), "Right", receiver);
-		render_text(location.table_dims.scale_to_center(up, alpha), "Up", receiver);
-	}
+//	inline
+//	void render_location(
+//		const project::RenderLocation& location,
+//		const GraphicsReceiver& receiver
+//	) {
+//		// TODO
+////		render_dimension(location.table_dims, receiver);
+////
+//////		std::cout << "Original: " << location.of << std::endl;
+//////		std::cout << "Unmapped: " << location.unmap(location.of) << std::endl;
+//////		std::cout << "Mapped unmapped: " << location.map(location.unmap(location.of)) << std::endl;
+////
+////		const auto offset = geometry::Point{0, 0};
+////		const auto right = geometry::Point{location.table_dims.width, 0};
+////		const auto up = geometry::Point{0, location.table_dims.height};
+////		const auto alpha = 0.8;
+////
+////		render_text(location.table_dims.scale_to_center(offset, alpha), "Offset", receiver);
+////		render_text(location.table_dims.scale_to_center(right, alpha), "Right", receiver);
+////		render_text(location.table_dims.scale_to_center(up, alpha), "Up", receiver);
+//	}
 
 	inline
 	void render_pocket_configs(
-			const config::Table& table,
+			const config::PoolConfiguration& table,
 			const GraphicsReceiver& receiver
 	) {
 		render_dimension(table.dims, receiver);
@@ -247,7 +260,7 @@ namespace billiards::graphics {
 			std::stringstream ss;
 			ss << "Pocket " << index;
 			render_text(
-				table.dims.scale_to_center(pocket.center(), 0.75),
+				table.dims.dims().scale_to_center(pocket.center(), 0.75),
 				ss.str(),
 				receiver);
 			++index;
@@ -282,31 +295,35 @@ namespace billiards::graphics {
 	}
 
 	void render_locations(
-		const config::Table& table,
+		const config::PoolConfiguration& table,
 		const layout::Locations& locations,
+		const bool use_dots,
 		const GraphicsReceiver& receiver
 	) {
 		int index = 0;
 		for (const auto& located_ball : locations.balls) {
 			const auto* ball_type = shots::get_ball_type(table, locations, index);
-			render_ball(located_ball, *ball_type, receiver);
+			render_ball(located_ball, *ball_type, use_dots, receiver);
 			index++;
 		}
 	}
 
 	void render_shot_info(
-			const config::Table& table,
+			const RenderShotOptions& options,
+			const config::PoolConfiguration& table,
 			const layout::Locations& locations,
 			const shots::ShotInformation& shot_info,
 			const GraphicsReceiver& receiver
 	) {
-//		render_shot_edge(shot_info, 0, receiver);
-//		render_shot_edge(shot_info, 2, receiver);
+		if (options.draw_lines) {
+			render_shot_edge(shot_info, 0, receiver);
+			render_shot_edge(shot_info, 2, receiver);
+		}
 
 		for (const auto& destination : shot_info.infos) {
 			render_destination(
-					table, locations, shot_info,
-					destination, shot_info.get_shot_type(destination), receiver);
+				table, locations, shot_info,
+				destination, shot_info.get_shot_type(destination), receiver);
 		}
 	}
 
@@ -318,22 +335,23 @@ namespace billiards::graphics {
 		for (const auto& pocket : params.table.pockets) {
 			render_pocket(pocket, receiver);
 		}
-		render_shot_info(params.table, params.locations, params.shot_info, receiver);
-		render_locations(params.table, params.locations, receiver);
+		render_shot_info(params.options, params.table, params.locations, params.shot_info, receiver);
+		render_locations(params.table, params.locations, params.options.use_dots, receiver);
 	}
 
 	void render_layout(
-			const RenderLayoutParams& params,
-			const GraphicsReceiver& receiver
+		const RenderLayoutParams& params,
+		const GraphicsReceiver& receiver
 	) {
-		render_table_edge(params.table, receiver);
-		for (const auto& pocket : params.table.pockets) {
+		render_table_edge(params.layout.config, receiver);
+		for (const auto& pocket : params.layout.config.pockets) {
 			render_pocket(pocket, receiver);
 		}
-		for (const auto& info : params.infos) {
-			render_shot_info(params.table, params.layout.locations, info, receiver);
+
+		for (const auto& info : params.layout.infos) {
+			render_shot_info(params.options, params.layout.config, params.layout.layout.locations, info, receiver);
 		}
-		render_locations(params.table, params.layout.locations, receiver);
+		render_locations(params.layout.config, params.layout.layout.locations, params.options.use_dots, receiver);
 	}
 }
 #endif //IDEA_RENDER_H

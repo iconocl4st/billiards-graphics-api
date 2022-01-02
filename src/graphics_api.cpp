@@ -18,44 +18,44 @@ int main(int argc, char **argv) {
 
 	DO_STATUS_ENDPOINT();
 
-	CROW_ROUTE(app, "/table-location/")
-		.methods("POST"_method, "OPTIONS"_method)
-			([](const crow::request& req) {
-				if (req.method == "OPTIONS"_method) {
-					HANDLE_OPTIONS;
-				} else if (req.method == "POST"_method) {
-					nlohmann::json value = nlohmann::json::parse(req.body);
-
-					billiards::project::RenderLocation location;
-					billiards::json::ParseResult result;
-					if (HAS_OBJECT(value, "params") && HAS_OBJECT(value["params"], "location")) {
-						location.parse(value["params"]["location"], result);
-					} else {
-						RETURN_ERROR("No location param provided");
-					}
-					if (!result.success) {
-						std::cerr << "Invalid request:" << std::endl;
-						std::cerr << result.error_msg.str() << std::endl;
-						RETURN_ERROR("Unable to parse location");
-					}
-
-					billiards::utils::DefaultResponse def_resp{
-						"Rendered graphics", true, "graphics",
-						[&](billiards::json::SaxWriter& writer) {
-							writer.begin_array();
-							billiards::graphics::render_location(
-								location,
-								[&writer](std::shared_ptr<const billiards::graphics::GraphicsPrimitive> ptr) {
-									ptr->to_json(writer);
-								});
-							writer.end_array();
-						}};
-
-					RETURN_RESPONSE(def_resp);
-				} else {
-					return crow::response(404);
-				}
-			});
+//	CROW_ROUTE(app, "/table-location/")
+//		.methods("POST"_method, "OPTIONS"_method)
+//			([](const crow::request& req) {
+//				if (req.method == "OPTIONS"_method) {
+//					HANDLE_OPTIONS;
+//				} else if (req.method == "POST"_method) {
+//					nlohmann::json value = nlohmann::json::parse(req.body);
+//
+//					billiards::project::RenderLocation location;
+//					billiards::json::ParseResult result;
+//					if (HAS_OBJECT(value, "params") && HAS_OBJECT(value["params"], "location")) {
+//						location.parse(value["params"]["location"], result);
+//					} else {
+//						RETURN_ERROR("No location param provided");
+//					}
+//					if (!result.success) {
+//						std::cerr << "Invalid request:" << std::endl;
+//						std::cerr << result.error_msg.str() << std::endl;
+//						RETURN_ERROR("Unable to parse location");
+//					}
+//
+//					billiards::utils::DefaultResponse def_resp{
+//						"Rendered graphics", true, "graphics",
+//						[&](billiards::json::SaxWriter& writer) {
+//							writer.begin_array();
+//							billiards::graphics::render_location(
+//								location,
+//								[&writer](std::shared_ptr<const billiards::graphics::GraphicsPrimitive> ptr) {
+//									ptr->to_json(writer);
+//								});
+//							writer.end_array();
+//						}};
+//
+//					RETURN_RESPONSE(def_resp);
+//				} else {
+//					return crow::response(404);
+//				}
+//			});
 
 	CROW_ROUTE(app, "/pockets/")
 		.methods("POST"_method, "OPTIONS"_method)
@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 				} else if (req.method == "POST"_method) {
 					nlohmann::json value = nlohmann::json::parse(req.body);
 
-					billiards::config::Table table;
+					billiards::config::PoolConfiguration table;
 					billiards::json::ParseResult result;
 					if (HAS_OBJECT(value, "params") && HAS_OBJECT(value["params"], "table")) {
 						table.parse(value["params"]["table"], result);
@@ -163,10 +163,10 @@ int main(int argc, char **argv) {
 						[&params](billiards::json::SaxWriter& writer) {
 							writer.begin_array();
 							billiards::graphics::render_layout(
-									params,
-									[&writer](const std::shared_ptr<billiards::graphics::GraphicsPrimitive>& ptr) {
-										ptr->to_json(writer);
-									});
+								params,
+								[&writer](const std::shared_ptr<billiards::graphics::GraphicsPrimitive>& ptr) {
+									ptr->to_json(writer);
+								});
 							writer.end_array();
 						}};
 

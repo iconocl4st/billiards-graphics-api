@@ -6,13 +6,17 @@
 #define IDEA_RENDERSHOTPARAMS_H
 
 #include "billiards_common/shots/ShotInformation.h"
+#include "billiards_common/config/PoolConfiguration.h"
+#include "RenderShotOptions.h"
 
 namespace billiards::graphics {
 	class RenderShotParams : public json::Serializable {
 	public:
-		config::Table table;
+		config::PoolConfiguration table;
 		billiards::layout::Locations locations;
+		// This could just be the shot...
 		billiards::shots::ShotInformation shot_info;
+		graphics::RenderShotOptions options;
 
 		RenderShotParams() = default;
 		~RenderShotParams() override = default;
@@ -21,6 +25,8 @@ namespace billiards::graphics {
 			writer.begin_object();
 			writer.key("table");
 			table.to_json(writer);
+			writer.key("options");
+			options.to_json(writer);
 			writer.end_object();
 		};
 
@@ -28,6 +34,7 @@ namespace billiards::graphics {
 			REQUIRE_CHILD(status, value, "table", table, "Must have a table to render");
 			REQUIRE_CHILD(status, value, "locations", locations, "Must have a table to render");
 			REQUIRE_CHILD(status, value, "shot-info", shot_info, "Must have a table to render");
+			REQUIRE_CHILD(status, value, "options", options, "Must have a options");
 		};
 	};
 }
