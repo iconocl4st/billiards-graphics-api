@@ -7,7 +7,6 @@
 
 #include "billiards_common/shots/Locations.h"
 #include "billiards_common/shots/ShotInformation.h"
-#include "billiards_common/shots/shot_calculation/shot.h"
 #include "billiards_common/shots/shot_helpers.h"
 
 #include "billiards_common/graphics/Lines.h"
