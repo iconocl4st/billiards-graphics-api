@@ -33,6 +33,4 @@ target_link_libraries(
 	${Boost_SYSTEM_LIBRARY}
 )
 
-	#Eigen3::Eigen
-
 install(TARGETS graphics_api DESTINATION /app)
