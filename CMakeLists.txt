@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+slcmake_minimum_required(VERSION 3.13)
 project(graphics_api)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -31,7 +31,8 @@ target_link_libraries(
 
 	Threads::Threads
 	${Boost_SYSTEM_LIBRARY}
-	Eigen3::Eigen
 )
+
+	#Eigen3::Eigen
 
 install(TARGETS graphics_api DESTINATION /app)
