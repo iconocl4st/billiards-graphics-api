@@ -6,13 +6,13 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(Threads REQUIRED)
 find_package(Boost COMPONENTS system REQUIRED)
-find_package (Eigen3 3.3 REQUIRED NO_MODULE HINTS /usr/share/cmake/Modules/)
+#find_package (Eigen3 3.3 REQUIRED NO_MODULE HINTS /usr/share/cmake/Modules/ /usr/share/eigen3/cmake/)
 
 add_executable(
     graphics_api
 
 	${CMAKE_CURRENT_SOURCE_DIR}/src/graphics_api.cpp
-    src/RenderLayoutParams.h src/RenderShotOptions.h)
+)
 
 target_include_directories(
 	graphics_api
