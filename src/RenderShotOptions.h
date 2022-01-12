@@ -13,16 +13,19 @@ namespace billiards::graphics {
 	public:
 		bool draw_lines;
 		bool use_dots;
+		bool show_labels;
 
 		RenderShotOptions(
 			bool draw_lines,
-			bool use_dots
+			bool use_dots,
+			bool show_labels
 		)
 			: draw_lines{draw_lines}
 			, use_dots{use_dots}
+			, show_labels{show_labels}
 		{}
 
-		RenderShotOptions() : RenderShotOptions{true, false} {}
+		RenderShotOptions() : RenderShotOptions{true, false, true} {}
 
 		~RenderShotOptions() override = default;
 
@@ -37,12 +40,18 @@ namespace billiards::graphics {
 			} else {
 				use_dots = false;
 			}
+			if (HAS_BOOL(value, "show-labels")) {
+				show_labels = value["show-labels"].get<bool>();
+			} else {
+				show_labels = false;
+			}
 		}
 
 		void to_json(json::SaxWriter& writer) const override {
 			writer.begin_object();
 			writer.field("draw-lines", draw_lines);
 			writer.field("use-dots", use_dots);
+			writer.field("show-labels", use_dots);
 			writer.end_object();
 		}
 	};

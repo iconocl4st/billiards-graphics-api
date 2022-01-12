@@ -5,6 +5,10 @@
 #ifndef IDEA_RENDER_H
 #define IDEA_RENDER_H
 
+//#include "billiards_common/utils/dump.h"
+
+#include <utility>
+
 #include "billiards_common/shots/Locations.h"
 #include "billiards_common/shots/ShotInformation.h"
 #include "billiards_common/shots/shot_helpers.h"
@@ -19,6 +23,7 @@
 
 #include "RenderShotParams.h"
 #include "RenderLayoutParams.h"
+
 
 namespace billiards::graphics {
 
@@ -46,20 +51,37 @@ namespace billiards::graphics {
 	}
 
 	inline
+	void render_circle(
+		geometry::Point location,
+		double radius,
+		double line_width,
+		const graphics::Color& color,
+		int priority,
+		const GraphicsReceiver& receiver
+	) {
+		auto primitive = std::make_shared<graphics::Circle>();
+		primitive->center = std::move(location);
+		primitive->radius = radius;
+		primitive->fill = false;
+		primitive->line_width = line_width;
+		primitive->color = color;
+		primitive->priority = priority;
+		receiver(primitive);
+	}
+
+	inline
 	void render_ghost_ball(
 		const geometry::Point& location,
 		const config::BallInfo& ball_type,
 		const GraphicsReceiver& receiver
 	) {
-		auto primitive = std::make_shared<graphics::Circle>();
-		primitive->center = location;
-		primitive->radius = ball_type.radius;
-		primitive->fill = false;
-		primitive->line_width = 0.1;
-		primitive->color = graphics::Color{255, 255, 255, 255};
-		primitive->priority = priority::GHOST_BALL;
-
-		receiver(primitive);
+		render_circle(
+			location,
+			ball_type.radius,
+			0.1,
+			graphics::Color{255, 255, 255, 255},
+			priority::BALL,
+			receiver);
 	}
 
 	inline
@@ -145,6 +167,8 @@ namespace billiards::graphics {
 		const config::Pocket& pocket,
 		const GraphicsReceiver& receiver
 	) {
+//		std::cout << "Rendering pocket:\n" << json::pretty_dump(pocket) << "\n";
+
 		auto primitive = std::make_shared<graphics::Polygon>();
 		primitive->vertices.emplace_back(pocket.inner_segment_1);
 		primitive->vertices.emplace_back(pocket.outer_segment_1);
@@ -162,20 +186,52 @@ namespace billiards::graphics {
 		const layout::LocatedBall& located_ball,
 		const config::BallInfo& ball_type,
 		const bool use_dots,
+		const bool show_labels,
 		const GraphicsReceiver& receiver
 	) {
-		auto primitive = std::make_shared<graphics::Circle>();
-		primitive->center = located_ball.location;
-		if (use_dots) {
-			primitive->radius = ball_type.radius / 4;
-		} else {
-			primitive->radius = ball_type.radius;
-		}
-		primitive->fill = true;
-		primitive->color = ball_type.color;
-		primitive->priority = priority::BALL;
+		{
+			auto primitive = std::make_shared<graphics::Circle>();
+			primitive->center = located_ball.location;
+			if (use_dots) {
+				primitive->radius = ball_type.radius / 4;
+			} else {
+				primitive->radius = ball_type.radius;
+			}
+			primitive->fill = true;
+			primitive->color = ball_type.color;
+			primitive->priority = priority::BALL;
 
-		receiver(primitive);
+			receiver(primitive);
+		}
+
+		if (!use_dots) {
+			render_circle(
+				located_ball.location,
+				ball_type.radius,
+				0.1,
+				graphics::Color{255, 255, 255, 255},
+				priority::BALL,
+				receiver);
+		}
+
+		if (show_labels) {
+			auto primitive = std::make_shared<graphics::Text>();
+			primitive->location = located_ball.location;
+
+			std::stringstream text_stream;
+			if (ball_type.is_cue()) {
+				text_stream << ball_type.name;
+			} else {
+				text_stream << ball_type.number;
+			}
+
+			primitive->text = text_stream.str();
+			primitive->location = geometry::Point{
+				located_ball.location.x,
+				located_ball.location.y - 1.5 * ball_type.radius};
+			primitive->priority = priority::BALL;
+			receiver(primitive);
+		}
 	}
 
 	inline
@@ -247,13 +303,14 @@ namespace billiards::graphics {
 
 	inline
 	void render_pocket_configs(
-			const config::PoolConfiguration& table,
-			const GraphicsReceiver& receiver
+		const config::PoolConfiguration& table,
+		const GraphicsReceiver& receiver
 	) {
 		render_dimension(table.dims, receiver);
 
 		int index = 0;
-		for (const auto& pocket : table.pockets) {
+		const auto pockets = table.pockets();
+		for (const auto& pocket : pockets) {
 			render_pocket(pocket, receiver);
 
 			std::stringstream ss;
@@ -297,12 +354,13 @@ namespace billiards::graphics {
 		const config::PoolConfiguration& table,
 		const layout::Locations& locations,
 		const bool use_dots,
+		const bool show_labels,
 		const GraphicsReceiver& receiver
 	) {
 		int index = 0;
 		for (const auto& located_ball : locations.balls) {
 			const auto* ball_type = shots::get_ball_type(table, locations, index);
-			render_ball(located_ball, *ball_type, use_dots, receiver);
+			render_ball(located_ball, *ball_type, use_dots, show_labels, receiver);
 			index++;
 		}
 	}
@@ -326,16 +384,24 @@ namespace billiards::graphics {
 		}
 	}
 
+	void render_pockets(
+		const config::PoolConfiguration& config,
+		const GraphicsReceiver& receiver
+	) {
+		const auto pockets = config.pockets();
+		for (const auto& pocket : pockets) {
+			render_pocket(pocket, receiver);
+		}
+	}
+
 	void render_shot(
 		const RenderShotParams& params,
 		const GraphicsReceiver& receiver
 	) {
 		render_table_edge(params.table, receiver);
-		for (const auto& pocket : params.table.pockets) {
-			render_pocket(pocket, receiver);
-		}
+		render_pockets(params.table, receiver);
 		render_shot_info(params.options, params.table, params.locations, params.shot_info, receiver);
-		render_locations(params.table, params.locations, params.options.use_dots, receiver);
+		render_locations(params.table, params.locations, params.options.use_dots, params.options.show_labels, receiver);
 	}
 
 	void render_layout(
@@ -343,14 +409,11 @@ namespace billiards::graphics {
 		const GraphicsReceiver& receiver
 	) {
 		render_table_edge(params.layout.config, receiver);
-		for (const auto& pocket : params.layout.config.pockets) {
-			render_pocket(pocket, receiver);
-		}
-
+		render_pockets(params.layout.config, receiver);
 		for (const auto& info : params.layout.infos) {
 			render_shot_info(params.options, params.layout.config, params.layout.layout.locations, info, receiver);
 		}
-		render_locations(params.layout.config, params.layout.layout.locations, params.options.use_dots, receiver);
+		render_locations(params.layout.config, params.layout.layout.locations, params.options.use_dots, params.options.show_labels, receiver);
 	}
 }
 #endif //IDEA_RENDER_H
